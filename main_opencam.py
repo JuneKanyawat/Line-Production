@@ -77,7 +77,7 @@ cycle_time = "N/A"
 assembly_time = "N/A"
 
 # Open video capture from the webcam
-cap = cv2.VideoCapture(0)
+cap = cv2.VideoCapture(5)
 frame_nmr = 0
 ret = True
 step = 10
