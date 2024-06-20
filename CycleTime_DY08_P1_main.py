@@ -1,7 +1,6 @@
 import cv2
 import numpy as np
 import pickle
-import os
 from skimage.transform import resize
 import time
 from datetime import datetime
@@ -29,6 +28,17 @@ def get_spots_boxes(connected_components):
         slots.append([x1, y1, w, h])
     return slots
 
+def calc_diff(im1, im2):
+    return np.abs(np.mean(im1) - np.mean(im2))
+
+def empty_or_not(spot_bgr, model):
+    flat_data = []
+    img_resized = resize(spot_bgr, (30, 10, 3))
+    flat_data.append(img_resized.flatten())
+    flat_data = np.array(flat_data)
+    y_output = model.predict(flat_data)
+    return y_output[0]
+
 filename = os.path.basename(__file__)
 filename = filename.split('_')[1] + '_' + filename.split('_')[2]
 
@@ -42,17 +52,6 @@ model2 = pickle.load(open(model2_path, "rb"))
 EMPTY = 0
 NOT_EMPTY = 1
 OTHER = 2
-
-def calc_diff(im1, im2):
-    return np.abs(np.mean(im1) - np.mean(im2))
-
-def empty_or_not(spot_bgr, model):
-    flat_data = []
-    img_resized = resize(spot_bgr, (30, 10, 3))
-    flat_data.append(img_resized.flatten())
-    flat_data = np.array(flat_data)
-    y_output = model.predict(flat_data)
-    return y_output[0]
 
 mask1 = f"dataset/mask_img_{filename}_S1.png"
 mask2 = f"dataset/mask_img_{filename}_S2.png"
@@ -124,7 +123,6 @@ def create_box_mask(boxes, image_size, background_color, output_path):
     image.save(output_path)
     print(f"Image saved to {output_path}")
 
-
 def boxes_overlap(box1, box2):
     x1, y1, w1, h1 = box1
     x2, y2, w2, h2 = box2
@@ -162,59 +160,50 @@ class Application(tk.Frame):
         self.config_window = None
 
     def create_widgets(self):
-        
-        self.record_button = tk.Button(self)
-        self.record_button["text"] = "Record Video"
-        self.record_button["command"] = self.record_video
-        self.record_button.pack(side="top")
+        self.master.geometry("300x150+0+0")
 
-        self.adjust_button = tk.Button(self)
-        self.adjust_button["text"] = "Adjust Position"
-        self.adjust_button["command"] = self.adjust_position
-        self.adjust_button.pack(side="top")
+        # Create container frame
+        self.container = tk.Frame(self.master)
+        self.container.pack(fill="both", expand=True)
 
-        self.config_button = tk.Button(self)
-        self.config_button["text"] = "Configuration"
-        self.config_button["command"] = self.configuration
-        self.config_button.pack(side="top")
+        self.frames = {}
+        for F in (StartPage, RecordPage):
+            page_name = F.__name__
+            frame = F(parent=self.container, controller=self)
+            self.frames[page_name] = frame
+            frame.grid(row=0, column=0, sticky="nsew")
 
-        self.show_index_button = tk.Button(self)
-        self.show_index_button["text"] = "Show Index"
-        self.show_index_button["command"] = self.show_index
-        self.show_index_button.pack(side="top")
+        self.show_frame("StartPage")
+
+    def show_frame(self, page_name):
+        frame = self.frames[page_name]
+        frame.tkraise()
 
     def show_index(self):
-        if not self.show_idx:
-            self.show_idx = True
-        else:
-            self.show_idx = False
-
-    def record_video(self):
-        global app
-        if not self.is_recording:
-            self.start_recording()
-        else:
-            self.stop_recording()
+        self.show_idx = not self.show_idx
 
     def start_recording(self):
-        global app
-        self.is_recording = True
-        current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-        video_filename = f"dataset/cam_video_{current_datetime}.mp4"
-        codec = cv2.VideoWriter_fourcc(*'mp4v')
-        frame_rate = 20.0
-        self.video_writer = cv2.VideoWriter(video_filename, codec, frame_rate, (mask_width, mask_height))
-        print(f"Recording started: {video_filename}")
+        if not self.is_recording:
+            self.is_recording = True
+            current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+            video_filename = f"dataset/cam_video_{current_datetime}.mp4"
+            codec = cv2.VideoWriter_fourcc(*'mp4v')
+            frame_rate = 20.0
+            self.video_writer = cv2.VideoWriter(video_filename, codec, frame_rate, (mask_width, mask_height))
+            print(f"Recording started: {video_filename}")
 
     def stop_recording(self):
-        global app
-        self.is_recording = False
-        if self.video_writer is not None:
-            self.video_writer.release()
-            print("Recording stopped.")
+        if self.is_recording:
+            self.is_recording = False
+            if self.video_writer is not None:
+                self.video_writer.release()
+                print("Recording stopped.")
+            messagebox.showinfo("Recording Stopped", "Recording has stopped.")
+        else:
+            print("No active recording to stop.")
 
     def adjust_position(self):
-        if not self.is_adjust:
+        if not self.is_adjust or not hasattr(self, 'adjust_window') or not self.adjust_window.winfo_exists():
             self.is_adjust = True
             self.create_adjust_window()
 
@@ -223,14 +212,34 @@ class Application(tk.Frame):
         self.adjust_window.title("Adjust Position")
         self.adjust_window.geometry("100x50")
 
-        save_button = Button(self.adjust_window,text="Save",command=self.save_adjustments)
+        save_button = tk.Button(self.adjust_window, text="Save", command=self.save_adjustments)
         save_button.pack(side="top", padx=10, pady=10)
 
-        reset_button = Button(self.adjust_window,text="Reset", command=self.reset_adjustments)
+        reset_button = tk.Button(self.adjust_window, text="Reset", command=self.reset_adjustments)
         reset_button.pack(side="bottom", padx=10, pady=10)
+
+        self.adjust_window.protocol("WM_DELETE_WINDOW", self.close_adjust_window)
+
+    def close_adjust_window(self):
+        self.is_adjust = False
+        global spots1, spots2
+        spots1 = original_spots1.copy()
+        spots2 = original_spots2.copy()
+        if hasattr(self, 'adjust_window') and self.adjust_window:
+            self.adjust_window.destroy()
 
     def save_adjustments(self):
         global Config_data
+
+        # Dummy functions for demonstration
+        def any_boxes_overlap(spots):
+            return False
+
+        def create_config_data(spots, main_box, model_file):
+            return []
+
+        def create_box_mask(spots, image_size, background_color, output_path):
+            pass
 
         if any_boxes_overlap(spots1) or any_boxes_overlap(spots2):
             messagebox.showinfo("Message", "Boxes overlap")
@@ -280,7 +289,7 @@ class Application(tk.Frame):
             for i, entry in enumerate(Config_data):
                 main_box, sub_box, model_file, x, y, w, h = entry
                 self.my_table.insert(parent='', index='end', iid=f'entry_{i}', text='',
-                                    values=(main_box, sub_box, model_file, x, y, w, h))
+                                     values=(main_box, sub_box, model_file, x, y, w, h))
 
     def configuration(self):
         self.config_window = tk.Toplevel(self.master)
@@ -294,24 +303,23 @@ class Application(tk.Frame):
         self.my_table = ttk.Treeview(table_frame)
         self.my_table['columns'] = ('main_box', 'sub_box', 'model_file', 'x', 'y', 'w', 'h')
 
-        self.my_table['columns'] = ('main_box', 'sub_box', 'model_file', 'x', 'y', 'w', 'h')
-        self.my_table.column("#0", width=0, stretch=NO)
-        self.my_table.column("main_box", anchor=CENTER, width=40)
-        self.my_table.column("sub_box", anchor=CENTER, width=40)
-        self.my_table.column("model_file", anchor=CENTER, width=80)
-        self.my_table.column("x", anchor=CENTER, width=70)
-        self.my_table.column("y", anchor=CENTER, width=70)
-        self.my_table.column("w", anchor=CENTER, width=70)
-        self.my_table.column("h", anchor=CENTER, width=70)
+        self.my_table.column("#0", width=0, stretch=tk.NO)
+        self.my_table.column("main_box", anchor=tk.CENTER, width=40)
+        self.my_table.column("sub_box", anchor=tk.CENTER, width=40)
+        self.my_table.column("model_file", anchor=tk.CENTER, width=80)
+        self.my_table.column("x", anchor=tk.CENTER, width=70)
+        self.my_table.column("y", anchor=tk.CENTER, width=70)
+        self.my_table.column("w", anchor=tk.CENTER, width=70)
+        self.my_table.column("h", anchor=tk.CENTER, width=70)
 
-        self.my_table.heading("#0", text="", anchor=CENTER)
-        self.my_table.heading("main_box", text="Main Box", anchor=CENTER)
-        self.my_table.heading("sub_box", text="Sub Box", anchor=CENTER)
-        self.my_table.heading("model_file", text="Model File", anchor=CENTER)
-        self.my_table.heading("x", text="X", anchor=CENTER)
-        self.my_table.heading("y", text="Y", anchor=CENTER)
-        self.my_table.heading("w", text="W", anchor=CENTER)
-        self.my_table.heading("h", text="H", anchor=CENTER)
+        self.my_table.heading("#0", text="", anchor=tk.CENTER)
+        self.my_table.heading("main_box", text="Main Box", anchor=tk.CENTER)
+        self.my_table.heading("sub_box", text="Sub Box", anchor=tk.CENTER)
+        self.my_table.heading("model_file", text="Model File", anchor=tk.CENTER)
+        self.my_table.heading("x", text="X", anchor=tk.CENTER)
+        self.my_table.heading("y", text="Y", anchor=tk.CENTER)
+        self.my_table.heading("w", text="W", anchor=tk.CENTER)
+        self.my_table.heading("h", text="H", anchor=tk.CENTER)
 
         self.update_treeview()
 
@@ -320,6 +328,65 @@ class Application(tk.Frame):
 
         self.my_table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+
+class StartPage(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent)
+        self.controller = controller
+        self.create_widgets()
+
+    def create_widgets(self):
+        external_padx = 10
+        external_pady = 10
+        internal_padx = 10
+        internal_pady = 5
+
+        # Show Index Button
+        self.show_index_button = tk.Button(self, text="Show Index", command=self.controller.show_index, padx=internal_padx,
+                                           pady=internal_pady)
+        self.show_index_button.grid(row=0, column=0, padx=external_padx, pady=external_pady)
+
+        # Record Video Button
+        self.record_button = tk.Button(self, text="Record Video", command=lambda: self.controller.show_frame("RecordPage"),
+                                       padx=internal_padx, pady=internal_pady)
+        self.record_button.grid(row=1, column=1, padx=external_padx, pady=external_pady)
+
+        # Adjust Position Button
+        self.adjust_button = tk.Button(self, text="Adjust Position", command=self.controller.adjust_position, padx=internal_padx,
+                                       pady=internal_pady)
+        self.adjust_button.grid(row=1, column=0, padx=external_padx, pady=external_pady)
+
+        # Configuration Button
+        self.config_button = tk.Button(self, text="Configuration", command=self.controller.configuration, padx=internal_padx,
+                                       pady=internal_pady)
+        self.config_button.grid(row=0, column=1, padx=external_padx, pady=external_pady)
+
+class RecordPage(tk.Frame):
+    def __init__(self, parent, controller):
+        super().__init__(parent)
+        self.controller = controller
+        self.create_widgets()
+
+    def create_widgets(self):
+        external_padx = 10
+        external_pady = 10
+        internal_padx = 10
+        internal_pady = 5
+
+        # Start Recording Button
+        start_button = tk.Button(self, text="Start Recording", command=self.controller.start_recording, padx=internal_padx,
+                                 pady=internal_pady)
+        start_button.pack(padx=external_padx, pady=external_pady)
+
+        # Stop Recording Button
+        stop_button = tk.Button(self, text="Stop Recording", command=self.controller.stop_recording, padx=internal_padx,
+                                pady=internal_pady)
+        stop_button.pack(padx=external_padx, pady=external_pady)
+
+        # Back Button to return to the StartPage
+        back_button = tk.Button(self, text="Back", command=lambda: self.controller.show_frame("StartPage"), padx=internal_padx,
+                                pady=internal_pady)
+        back_button.pack(padx=external_padx, pady=external_pady)
 
 def update_gui():
     global app
