@@ -14,7 +14,6 @@ import os
 from tkinter import messagebox
 
 app = None
-
 # Function to get spots boxes from the mask
 def get_spots_boxes(connected_components):
     (totalLabels, label_ids, values, centroid) = connected_components
@@ -109,7 +108,6 @@ original_spots1 = spots1.copy()
 original_spots2 = spots2.copy()
 
 def create_box_mask(boxes, image_size, background_color, output_path):
-    # Create a new image with the specified background color
     image = Image.new("RGB", image_size, background_color)
     draw = ImageDraw.Draw(image)
 
@@ -230,16 +228,6 @@ class Application(tk.Frame):
 
     def save_adjustments(self):
         global Config_data
-
-        # Dummy functions for demonstration
-        def any_boxes_overlap(spots):
-            return False
-
-        def create_config_data(spots, main_box, model_file):
-            return []
-
-        def create_box_mask(spots, image_size, background_color, output_path):
-            pass
 
         if any_boxes_overlap(spots1) or any_boxes_overlap(spots2):
             messagebox.showinfo("Message", "Boxes overlap")
@@ -403,7 +391,6 @@ frame_nmr = 0
 ret = True
 step = 10
 cycle_counter = 1
-arr = []
 cycle_time_start = time.time()
 
 dragging = False
@@ -412,8 +399,6 @@ step_size = 5
 
 def mouse_events(event, x, y, flags, param):
     global dragging, selected_object_index, spots1, spots2
-
-
     if app is not None and app.is_adjust:
         if event == cv2.EVENT_LBUTTONDOWN:
             for i, spot in enumerate(spots1):
@@ -604,11 +589,9 @@ while ret:
             spots2[real_index] = [x2 + step_size, y2, w, h]
 
     if cv2.waitKey(25) & 0xFF == ord('q'):
-        print(arr)
         break
 
     frame_nmr += 1
 
 cap.release()
-print(arr)
 cv2.destroyAllWindows()
