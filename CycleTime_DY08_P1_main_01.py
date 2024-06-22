@@ -467,7 +467,7 @@ for S in [sublist[0] for sublist in MainSub]:
 step_size = 5
 
 def mouse_events(event, x, y, flags, param):
-    global dragging, #selected_object_index , spots1, spots2
+    global dragging #, selected_object_index , spots1, spots2
     for S in [sublist[0] for sublist in MainSub]:
         if app is not None and app.is_adjust:
             if event == cv2.EVENT_LBUTTONDOWN:
