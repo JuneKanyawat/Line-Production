@@ -86,24 +86,26 @@ for S in [sublist[0] for sublist in MainSub]:
     # Construct the model path
     model_path = f"dataset/model_{filename}_S{S}.p"
     model = pickle.load(open(model_path, "rb"))
-    mask = f"dataset/mask_img_{filename}_S{S}.png"
+    #mask = f"dataset/mask_img_{filename}_S{S}.png"
     model_file = f"model_{filename}"
-    mask_img = cv2.imread(mask, 0)
-    spots = get_spots_boxes(cv2.connectedComponentsWithStats(mask_img, 4, cv2.CV_32S))
+    #mask_img = cv2.imread(mask, 0)
+    #spots = get_spots_boxes(cv2.connectedComponentsWithStats(mask_img, 4, cv2.CV_32S))
+    spots = [sublist[3:7] for sublist in Config_data]
 
+    # Create Config_data entries for spots1 and spots2
+    Config_data.extend(create_config_data(spots, S, model_file))
+    
+        
     spots_status = [None for _ in spots]
     diffs = [None for _ in spots]
     previous_spots_status = [None for _ in spots]
     original_spots = spots.copy()
 
-    # Create Config_data entries for spots1 and spots2
-    Config_data.extend(create_config_data(spots, S, model_file))
-    
     # Dynamically create variable names like model1, model2, etc.
     globals()[f'model{S}'] = model
-    globals()[f'mask{S}'] = mask
+    #globals()[f'mask{S}'] = mask
     globals()[f'model_file{S}'] = model_file
-    globals()[f'mask{S}_img'] = mask_img
+    #globals()[f'mask{S}_img'] = mask_img
     globals()[f'spots{S}'] = spots
 
     globals()[f'spots_status{S}'] = spots_status
@@ -130,8 +132,8 @@ for S in [sublist[0] for sublist in MainSub]:
 #connected_components_mask2 = cv2.connectedComponentsWithStats(mask2_img, 4, cv2.CV_32S)
 #spots2 = get_spots_boxes(connected_components_mask2)
 
-mask_height, mask_width = mask1_img.shape
-image_size = (mask_width,mask_height)
+#mask_height, mask_width = mask1_img.shape
+#image_size = (mask_width,mask_height)
 
 #spots_status1 = [None for _ in spots1]
 #spots_status2 = [None for _ in spots2]
@@ -276,8 +278,9 @@ class Application(tk.Frame):
 
     def save_adjustments(self):
         global Config_data
+        
+        overlap_boolean_list = [False for sublist in MainSub]
 
-        overlap_boolean_list = []
         for S in [sublist[0] for sublist in MainSub]:
             overlap_boolean_list = overlap_boolean_list.append(any_boxes_overlap(globals()[f'spots{S}']))
 
@@ -295,8 +298,8 @@ class Application(tk.Frame):
             #Config_data.extend(create_config_data(spots1, main_box1, model_file1))
             #Config_data.extend(create_config_data(spots2, main_box2, model_file2))
 
-            for S in [sublist[0] for sublist in MainSub]:
-                create_box_mask(globals()[f'spots{S}'], image_size, background_color, globals()[f'mask{S}'])
+            #for S in [sublist[0] for sublist in MainSub]:
+                #create_box_mask(globals()[f'spots{S}'], image_size, background_color, globals()[f'mask{S}'])
 
                 # create_box_mask(spots1, image_size, background_color, mask1)
                 # create_box_mask(spots2, image_size, background_color, mask2)
@@ -528,8 +531,8 @@ while ret:
         break
 
     copy_frame = frame.copy()
-    frame = cv2.resize(frame, (mask_width, mask_height))
-    copy_frame = cv2.resize(copy_frame, (mask_width, mask_height))
+    #frame = cv2.resize(frame, (mask_width, mask_height))
+    #copy_frame = cv2.resize(copy_frame, (mask_width, mask_height))
 
     if frame_nmr % step == 0 and previous_frame is not None:
         for S in [sublist[0] for sublist in MainSub]:
