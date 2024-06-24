@@ -86,26 +86,24 @@ for S in [sublist[0] for sublist in MainSub]:
     # Construct the model path
     model_path = f"dataset/model_{filename}_S{S}.p"
     model = pickle.load(open(model_path, "rb"))
-    #mask = f"dataset/mask_img_{filename}_S{S}.png"
+    mask = f"dataset/mask_img_{filename}_S{S}.png"
     model_file = f"model_{filename}"
-    #mask_img = cv2.imread(mask, 0)
-    #spots = get_spots_boxes(cv2.connectedComponentsWithStats(mask_img, 4, cv2.CV_32S))
-    spots = [sublist[3:7] for sublist in Config_data]
+    mask_img = cv2.imread(mask, 0)
+    spots = get_spots_boxes(cv2.connectedComponentsWithStats(mask_img, 4, cv2.CV_32S))
 
-    # Create Config_data entries for spots1 and spots2
-    Config_data.extend(create_config_data(spots, S, model_file))
-    
-        
     spots_status = [None for _ in spots]
     diffs = [None for _ in spots]
     previous_spots_status = [None for _ in spots]
     original_spots = spots.copy()
 
+    # Create Config_data entries for spots1 and spots2
+    Config_data.extend(create_config_data(spots, S, model_file))
+    
     # Dynamically create variable names like model1, model2, etc.
     globals()[f'model{S}'] = model
-    #globals()[f'mask{S}'] = mask
+    globals()[f'mask{S}'] = mask
     globals()[f'model_file{S}'] = model_file
-    #globals()[f'mask{S}_img'] = mask_img
+    globals()[f'mask{S}_img'] = mask_img
     globals()[f'spots{S}'] = spots
 
     globals()[f'spots_status{S}'] = spots_status
@@ -132,8 +130,8 @@ for S in [sublist[0] for sublist in MainSub]:
 #connected_components_mask2 = cv2.connectedComponentsWithStats(mask2_img, 4, cv2.CV_32S)
 #spots2 = get_spots_boxes(connected_components_mask2)
 
-#mask_height, mask_width = mask1_img.shape
-#image_size = (mask_width,mask_height)
+mask_height, mask_width = mask1_img.shape
+image_size = (mask_width,mask_height)
 
 #spots_status1 = [None for _ in spots1]
 #spots_status2 = [None for _ in spots2]
@@ -278,53 +276,60 @@ class Application(tk.Frame):
 
     def save_adjustments(self):
         global Config_data
-        
-        overlap_boolean_list = [False for sublist in MainSub]
 
+        overlap_boolean_list = []
         for S in [sublist[0] for sublist in MainSub]:
-            overlap_boolean_list = overlap_boolean_list.append(any_boxes_overlap(globals()[f'spots{S}']))
+            if any_boxes_overlap(globals()[f'spots{S}']):
+                
+            # overlap_boolean_list = overlap_boolean_list.append(any_boxes_overlap(globals()[f'spots{S}']))
+            # print(globals()[f'spots{S}'])
+            # print(overlap_boolean_list)
 
-        if any(overlap_boolean_list):
-            messagebox.showinfo("Message", "Boxes overlap")
+        #if sum(overlap_boolean_list)> 0:
+                messagebox.showinfo("Message", f"Boxes overlap on Main box {S}")
 
         # if any_boxes_overlap(spots1) or any_boxes_overlap(spots2):
         #     messagebox.showinfo("Message", "Boxes overlap")
 
-        else:
-            Config_data.clear()  # Clear existing data
-            for S in [sublist[0] for sublist in MainSub]:
-                Config_data.extend(create_config_data(globals()[f'spots{S}'], S, globals()[f'model_file{S}']))
+            else:
+                Config_data.clear()  # Clear existing data
+                for S in [sublist[0] for sublist in MainSub]:
+                    Config_data.extend(create_config_data(globals()[f'spots{S}'], S, globals()[f'model_file{S}']))
 
-            #Config_data.extend(create_config_data(spots1, main_box1, model_file1))
-            #Config_data.extend(create_config_data(spots2, main_box2, model_file2))
+                #Config_data.extend(create_config_data(spots1, main_box1, model_file1))
+                #Config_data.extend(create_config_data(spots2, main_box2, model_file2))
 
-            #for S in [sublist[0] for sublist in MainSub]:
-                #create_box_mask(globals()[f'spots{S}'], image_size, background_color, globals()[f'mask{S}'])
+                for S in [sublist[0] for sublist in MainSub]:
+                    create_box_mask(globals()[f'spots{S}'], image_size, background_color, globals()[f'mask{S}'])
 
-                # create_box_mask(spots1, image_size, background_color, mask1)
-                # create_box_mask(spots2, image_size, background_color, mask2)
+                    # create_box_mask(spots1, image_size, background_color, mask1)
+                    # create_box_mask(spots2, image_size, background_color, mask2)
 
-            if hasattr(self, 'adjust_window') and self.adjust_window:
-                self.adjust_window.destroy()
-            self.is_adjust = False
+                if hasattr(self, 'adjust_window') and self.adjust_window:
+                    self.adjust_window.destroy()
+                self.is_adjust = False
 
-            csv_filename = f"dataset/config_data_{filename}.csv"
+        csv_filename = f"dataset/config_data_{filename}.csv"
 
-            # Check if the file already exists and delete it if it does
-            if os.path.exists(csv_filename):
+        # Check if the file already exists and delete it if it does
+        if os.path.exists(csv_filename):
+            try:
                 os.remove(csv_filename)
+                print(f"{csv_filename} has been removed successfully.")
+            except PermissionError as e:
+                print(f"Error: {e}")
 
-            # Write Config_data to CSV
-            with open(csv_filename, mode='w', newline='') as file:
-                writer = csv.writer(file)
-                writer.writerow(['Main Box', 'Sub Box', 'Model File', 'X', 'Y', 'W', 'H'])  # Write header
-                writer.writerows(Config_data)
+        # Write Config_data to CSV
+        with open(csv_filename, mode='w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['Main Box', 'Sub Box', 'Model File', 'X', 'Y', 'W', 'H'])  # Write header
+            writer.writerows(Config_data)
 
-            print(f"Config_data saved to {csv_filename}")
+        print(f"Config_data saved to {csv_filename}")
 
-            # After saving adjustments, update the Treeview in configuration window
-            if hasattr(self, 'config_window') and self.config_window:
-                self.update_treeview()
+        # After saving adjustments, update the Treeview in configuration window
+        if hasattr(self, 'config_window') and self.config_window:
+            self.update_treeview()
 
     def reset_adjustments(self):
         #global spots1, spots2
@@ -471,8 +476,8 @@ step_size = 5
 
 def mouse_events(event, x, y, flags, param):
     global dragging #, selected_object_index , spots1, spots2
-    for S in [sublist[0] for sublist in MainSub]:
-        if app is not None and app.is_adjust:
+    if app is not None and app.is_adjust:
+        for S in [sublist[0] for sublist in MainSub]:
             if event == cv2.EVENT_LBUTTONDOWN:
 
                 #for S in [sublist[0] for sublist in MainSub]:
@@ -503,13 +508,14 @@ def mouse_events(event, x, y, flags, param):
                 #             selected_object_index = i + len(spots1)  # Adjust index for spots2
                 #             dragging = True
                 #             break
-                    else:
-                        globals()[f'selected_object_index{S}'] = None
+
+                else:
+                    globals()[f'selected_object_index{S}'] = None
 
             elif event == cv2.EVENT_MOUSEMOVE:
                 if dragging and globals()[f'selected_object_index{S}'] is not None:
                     #for S in [sublist[0] for sublist in MainSub]:
-                    if globals()[f'selected_object_index{S}'] < len(globals()[f'spots{S}']):
+                    if globals()[f'selected_object_index{S}'] is not None and dragging is True:
                         x1, y1, w, h = globals()[f'spots{S}'][globals()[f'selected_object_index{S}']]
                         globals()[f'spots{S}'][globals()[f'selected_object_index{S}']] = [x - w // 2, y - h // 2, w, h]
 
@@ -531,8 +537,8 @@ while ret:
         break
 
     copy_frame = frame.copy()
-    #frame = cv2.resize(frame, (mask_width, mask_height))
-    #copy_frame = cv2.resize(copy_frame, (mask_width, mask_height))
+    frame = cv2.resize(frame, (mask_width, mask_height))
+    copy_frame = cv2.resize(copy_frame, (mask_width, mask_height))
 
     if frame_nmr % step == 0 and previous_frame is not None:
         for S in [sublist[0] for sublist in MainSub]:
