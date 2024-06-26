@@ -43,7 +43,6 @@ def empty_or_not(spot_bgr, model):
 
 
 # Read csv file to get Main box, Sub box data structure
-
 def GetStructureFromCSV(file_path):
     # Initialize a dictionary to store the count of sub boxes for each main box
     main_box_counts = {}
@@ -95,10 +94,8 @@ for S in [sublist[0] for sublist in MainSub]:
         try:
             model = pickle.load(open(model_path, "rb"))
         except Exception as e:
-            # print(f"Error loading model {model_path}: {e}")
             continue
     else:
-        # print(f"Model file {model_path} not found. Skipping...")
         continue
     model = pickle.load(open(model_path, "rb"))
     mask = f"dataset/mask_img_{filename}_S{S}.png"
@@ -128,7 +125,6 @@ for S in [sublist[0] for sublist in MainSub]:
 
 mask_height, mask_width = mask2_img.shape
 image_size = (mask_width, mask_height)
-
 
 start_time = time.time()
 t_E = t_S = t_prev_E = None
@@ -272,8 +268,6 @@ class Application(tk.Frame):
                 self.is_adjust = True
                 self.update_treeview()
 
-
-
     def reset_adjustments(self):
         self.is_adjust = True
 
@@ -299,9 +293,9 @@ class Application(tk.Frame):
             globals()[f'mask{new_main_index}'] = f"dataset/mask_img_{filename}_S{new_main_index}.png"
 
             # Create an example image for the mask
-            image_size = (540, 960)  # Example image size
-            background_color = (0, 0, 0)  # Example background color (black)
-            image = Image.new("RGB", image_size, background_color)
+            img_size = (540, 960)  # Example image size
+            bg_color = (0, 0, 0)  # Example background color (black)
+            image = Image.new("RGB", img_size, bg_color)
 
             # Save the image to the specified mask path
             os.makedirs(os.path.dirname(globals()[f'mask{new_main_index}']), exist_ok=True)
@@ -354,14 +348,20 @@ class Application(tk.Frame):
             globals()[f'previous_spots_status{selected_main_int}'].pop(selected_index)
             globals()[f'original_spots{selected_main_int}'].pop(selected_index)
             globals()[f'selected_object_index{selected_main_int}'] = None
-            #MainSub = [i for i in MainSub if i[0] != selected_main_int]
+
             self.save_adjustments()
             print(f"Deleted spot at index {selected_index} from Main box {selected_main_int}")
 
-
+            MainSub = GetStructureFromCSV(f"dataset/config_data_{filename}.csv")
+            print(MainSub)
+            # Update OptionMenu with new choices
+            menu = adjust_page.dropdown["menu"]
+            menu.delete(0, "end")  # Clear existing options
+            choices = [str(sublist[0]) for sublist in MainSub] + ["new"]
+            for choice in choices:
+                menu.add_command(label=choice, command=tk._setit(adjust_page.selected_main, choice))
         else:
             print("No box selected to delete.")
-
 
 
     def delete_main_box(self):
@@ -574,12 +574,7 @@ for S in [sublist[0] for sublist in MainSub]:
     resizing_edge = None
 
 step_size = 5
-
-
-# dragging = False
-# resizing = False
 resize_margin = 10
-# resizing_edge = None
 
 def mouse_events(event, x, y, flags, param):
     global dragging, resizing, resizing_edge
@@ -671,10 +666,9 @@ while ret:
 
     if not ret:
         break
-    # print(f"Original frame size: {frame.shape[1]}x{frame.shape[0]}")
+
     copy_frame = frame.copy()
     frame = cv2.resize(frame, (mask_width, mask_height))
-    # print(f"Resize frame size: {frame.shape[1]}x{frame.shape[0]}")
     copy_frame = cv2.resize(copy_frame, (mask_width, mask_height))
 
     if frame_nmr % step == 0 and previous_frame is not None:
