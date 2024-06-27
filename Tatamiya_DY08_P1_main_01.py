@@ -62,7 +62,6 @@ def GetStructureFromCSV(file_path):
     result = [[main_box, count] for main_box, count in main_box_counts.items()]
     return result
 
-
 def create_config_data(spots, main_box, model_file):
     config_data = []
     for i, spot in enumerate(spots):
@@ -70,69 +69,6 @@ def create_config_data(spots, main_box, model_file):
         sub_box = i + 1  # Sub box index starts from 1
         config_data.append([main_box, sub_box, model_file, x, y, w, h])
     return config_data
-
-
-filename = os.path.basename(__file__)
-filename = filename.split('_')[1] + '_' + filename.split('_')[2]
-
-MainSub = GetStructureFromCSV(f"dataset/config_data_{filename}.csv")
-# print(f"config_data_{filename}.csv")
-# print(max([i[0] for i in MainSub]))
-
-EMPTY = 0
-NOT_EMPTY = 1
-OTHER = 2
-
-Config_data = []
-
-for S in [sublist[0] for sublist in MainSub]:
-    # Construct the model path
-    model_path = f"dataset/model_{filename}_S{S}.p"
-
-    # Check if the model file exists before loading
-    if os.path.exists(model_path):
-        try:
-            model = pickle.load(open(model_path, "rb"))
-        except Exception as e:
-            continue
-    else:
-        continue
-    model = pickle.load(open(model_path, "rb"))
-    mask = f"dataset/mask_img_{filename}_S{S}.png"
-    model_file = f"dataset/model_{filename}"
-    mask_img = cv2.imread(mask, 0)
-    spots = get_spots_boxes(cv2.connectedComponentsWithStats(mask_img, 4, cv2.CV_32S))
-
-    spots_status = [None for _ in spots]
-    diffs = [None for _ in spots]
-    previous_spots_status = [None for _ in spots]
-    original_spots = spots.copy()
-
-    # Create Config_data entries for spots1 and spots2
-    Config_data.extend(create_config_data(spots, S, model_file))
-
-    # Dynamically create variable names like model1, model2, etc.
-    globals()[f'model{S}'] = model
-    globals()[f'mask{S}'] = mask
-    globals()[f'model_file{S}'] = model_file
-    globals()[f'mask{S}_img'] = mask_img
-    globals()[f'spots{S}'] = spots
-
-    globals()[f'spots_status{S}'] = spots_status
-    globals()[f'diffs{S}'] = diffs
-    globals()[f'previous_spots_status{S}'] = previous_spots_status
-    globals()[f'original_spots{S}'] = original_spots
-
-mask_height, mask_width = mask2_img.shape
-image_size = (mask_width, mask_height)
-
-start_time = time.time()
-t_E = t_S = t_prev_E = None
-e_detected = s_detected = False
-
-previous_frame = None
-cycle_time = "N/A"
-assembly_time = "N/A"
 
 def create_box_mask(boxes, image_size, background_color, output_path):
     image = Image.new("RGB", image_size, background_color)
@@ -165,6 +101,72 @@ def any_boxes_overlap(boxes):
                 return True
     return False
 
+filename = os.path.basename(__file__)
+filename = filename.split('_')[1] + '_' + filename.split('_')[2]
+
+MainSub = GetStructureFromCSV(f"dataset/config_data_{filename}.csv")
+print(MainSub)
+
+EMPTY = 0
+NOT_EMPTY = 1
+OTHER = 2
+
+Config_data = []
+
+for S in [sublist[0] for sublist in MainSub]:
+    # Construct the model path
+    model_path = f"dataset/model_{filename}_S{S}.p"
+
+    # Check if the model file exists before loading
+    if os.path.exists(model_path):
+        try:
+            model = pickle.load(open(model_path, "rb"))
+        except Exception as e:
+            continue
+    else:
+        model_path = 'dataset/model_default.p'
+        model = pickle.load(open(model_path, "rb"))
+
+    mask = f"dataset/mask_img_{filename}_S{S}.png"
+    model_file = model_path.split('/', 1)[-1]
+    mask_img = cv2.imread(mask, 0)
+    spots = get_spots_boxes(cv2.connectedComponentsWithStats(mask_img, 4, cv2.CV_32S))
+
+    spots_status = [None for _ in spots]
+    diffs = [None for _ in spots]
+    previous_spots_status = [None for _ in spots]
+    original_spots = spots.copy()
+
+    # Create Config_data entries for spots1 and spots2
+    Config_data.extend(create_config_data(spots, S, model_file))
+
+    # Dynamically create variable names like model1, model2, etc.
+    globals()[f'model{S}'] = model
+    globals()[f'mask{S}'] = mask
+    globals()[f'model_file{S}'] = model_file
+    globals()[f'mask{S}_img'] = mask_img
+    globals()[f'spots{S}'] = spots
+
+    globals()[f'spots_status{S}'] = spots_status
+    globals()[f'diffs{S}'] = diffs
+    globals()[f'previous_spots_status{S}'] = previous_spots_status
+    globals()[f'original_spots{S}'] = original_spots
+
+cap = cv2.VideoCapture(0)
+frame_width = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
+frame_height = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
+
+mask_img_size = cv2.imread(f"dataset/mask_img_{filename}_S{MainSub[0][0]}.png",0)
+mask_height, mask_width = mask_img_size.shape
+image_size = (frame_width, frame_height)
+
+start_time = time.time()
+t_E = t_S = t_prev_E = None
+e_detected = s_detected = False
+
+previous_frame = None
+cycle_time = "N/A"
+assembly_time = "N/A"
 
 background_color = (0, 0, 0)
 # Tkinter GUI setup
@@ -200,8 +202,8 @@ class Application(tk.Frame):
     def show_frame(self, page_name):
         if page_name == "StartPage":
             self.is_adjust = False
-            # for S in [sublist[0] for sublist in MainSub]:
-            #     globals()[f'spots{S}'] = globals()[f'original_spots{S}'].copy()
+            for S in [sublist[0] for sublist in MainSub]:
+                globals()[f'spots{S}'] = globals()[f'original_spots{S}'].copy()
         if page_name == "AdjustPage":
             self.is_adjust = True
         frame = self.frames[page_name]
@@ -244,6 +246,7 @@ class Application(tk.Frame):
                     Config_data.extend(create_config_data(globals()[f'spots{S}'], S, globals()[f'model_file{S}']))
 
                 for S in [sublist[0] for sublist in MainSub]:
+                    image_size = (480,640)
                     create_box_mask(globals()[f'spots{S}'], image_size, background_color, globals()[f'mask{S}'])
 
                 for S in [sublist[0] for sublist in MainSub]:
@@ -363,7 +366,6 @@ class Application(tk.Frame):
         else:
             print("No box selected to delete.")
 
-
     def delete_main_box(self):
         global MainSub
         adjust_page = self.frames["AdjustPage"]
@@ -446,8 +448,7 @@ class StartPage(tk.Frame):
 
         # Show Index Button
         self.show_index_button = tk.Button(self, text="Show Index", command=self.controller.show_index,
-                                           padx=internal_padx,
-                                           pady=internal_pady)
+                                           padx=internal_padx, pady=internal_pady)
         self.show_index_button.grid(row=0, column=0, padx=external_padx, pady=external_pady)
 
         # Record Video Button
@@ -464,8 +465,7 @@ class StartPage(tk.Frame):
 
         # Configuration Button
         self.config_button = tk.Button(self, text="Configuration", command=self.controller.configuration,
-                                       padx=internal_padx,
-                                       pady=internal_pady)
+                                       padx=internal_padx, pady=internal_pady)
         self.config_button.grid(row=0, column=1, padx=external_padx, pady=external_pady)
 
 
@@ -503,8 +503,7 @@ class AdjustPage(tk.Frame):
 
         # Back Button to return to the StartPage
         back_button = tk.Button(self, text="Back", command=lambda: self.controller.show_frame("StartPage"),
-                                padx=internal_padx,
-                                pady=internal_pady)
+                                padx=internal_padx, pady=internal_pady)
         back_button.grid(row=1, column=0, padx=external_padx, pady=external_pady)
 
         # Save Button
@@ -516,7 +515,6 @@ class AdjustPage(tk.Frame):
         stop_button = tk.Button(self, text="Reset", command=self.controller.reset_adjustments, padx=internal_padx,
                                 pady=internal_pady)
         stop_button.grid(row=1, column=2, padx=external_padx, pady=external_pady)
-
 
 
 class RecordPage(tk.Frame):
@@ -533,8 +531,7 @@ class RecordPage(tk.Frame):
 
         # Start Recording Button
         start_button = tk.Button(self, text="Start Recording", command=self.controller.start_recording,
-                                 padx=internal_padx,
-                                 pady=internal_pady)
+                                 padx=internal_padx, pady=internal_pady)
         start_button.pack(padx=external_padx, pady=external_pady)
 
         # Stop Recording Button
@@ -544,8 +541,7 @@ class RecordPage(tk.Frame):
 
         # Back Button to return to the StartPage
         back_button = tk.Button(self, text="Back", command=lambda: self.controller.show_frame("StartPage"),
-                                padx=internal_padx,
-                                pady=internal_pady)
+                                padx=internal_padx, pady=internal_pady)
         back_button.pack(padx=external_padx, pady=external_pady)
 
 
@@ -560,7 +556,6 @@ def update_gui():
 gui_thread = threading.Thread(target=update_gui)
 gui_thread.start()
 
-cap = cv2.VideoCapture(0)
 frame_nmr = 0
 ret = True
 step = 10
@@ -661,6 +656,7 @@ def mouse_events(event, x, y, flags, param):
 cv2.namedWindow('Monitor', cv2.WINDOW_NORMAL)
 cv2.setMouseCallback('Monitor', mouse_events)
 
+
 while ret:
     ret, frame = cap.read()
 
@@ -670,6 +666,7 @@ while ret:
     copy_frame = frame.copy()
     frame = cv2.resize(frame, (mask_width, mask_height))
     copy_frame = cv2.resize(copy_frame, (mask_width, mask_height))
+
 
     if frame_nmr % step == 0 and previous_frame is not None:
         for S in [sublist[0] for sublist in MainSub]:
