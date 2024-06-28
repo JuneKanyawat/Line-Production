@@ -216,7 +216,7 @@ class Application(tk.Frame):
         if not self.is_recording:
             self.is_recording = True
             current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
-            video_filename = f"dataset/cam_video_{current_datetime}.mp4"
+            video_filename = f"dataset/cam_video_{filename}_{current_datetime}.mp4"
             codec = cv2.VideoWriter_fourcc(*'mp4v')
             frame_rate = 20.0
             self.video_writer = cv2.VideoWriter(video_filename, codec, frame_rate, (mask_width, mask_height))
@@ -776,6 +776,8 @@ while ret:
                 textDim = cv2.getTextSize(texts, cv2.FONT_HERSHEY_SIMPLEX, 0.4, 2)
                 cv2.putText(frame, texts, (int(x1 + w // 2 - (textDim[0][0])/2), int(y1 + h // 2 + (textDim[0][1])/2)),
                             cv2.FONT_HERSHEY_SIMPLEX, 0.4, (255, 255, 255), 2)
+            if globals()[f'selected_object_index{S}'] == spot_indx:
+                cv2.rectangle(frame, (x1 - 2, y1 - 2), (x1 + w + 2, y1 + h + 2), (0, 255, 255), 3)
 
     current_time = datetime.now().strftime("%H:%M:%S")
     if app.is_adjust:
