@@ -41,7 +41,6 @@ def empty_or_not(spot_bgr, model):
     y_output = model.predict(flat_data)
     return y_output[0]
 
-
 # Read csv file to get Main box, Sub box data structure
 def GetStructureFromCSV(file_path):
     # Initialize a dictionary to store the count of sub boxes for each main box
@@ -83,7 +82,6 @@ def create_box_mask(boxes, image_size, background_color, output_path):
     os.makedirs(os.path.dirname(output_path), exist_ok=True)
     image.save(output_path)
     print(f"Image saved to {output_path}")
-
 
 def boxes_overlap(box1, box2):
     x1, y1, w1, h1 = box1
@@ -433,6 +431,11 @@ class Application(tk.Frame):
         self.my_table.configure(yscrollcommand=scrollbar.set)
         self.my_table.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
+        
+external_padx = 10
+external_pady = 10
+internal_padx = 10
+internal_pady = 5
 
 class StartPage(tk.Frame):
     def __init__(self, parent, controller):
@@ -441,31 +444,22 @@ class StartPage(tk.Frame):
         self.create_widgets()
 
     def create_widgets(self):
-        external_padx = 10
-        external_pady = 10
-        internal_padx = 10
-        internal_pady = 5
-
         # Show Index Button
-        self.show_index_button = tk.Button(self, text="Show Index", command=self.controller.show_index,
-                                           padx=internal_padx, pady=internal_pady)
+        self.show_index_button = tk.Button(self, text="Show Index", command=self.controller.show_index, padx=internal_padx, pady=internal_pady)
         self.show_index_button.grid(row=0, column=0, padx=external_padx, pady=external_pady)
 
         # Record Video Button
         self.record_button = tk.Button(self, text="Record Video",
-                                       command=lambda: self.controller.show_frame("RecordPage"),
-                                       padx=internal_padx, pady=internal_pady)
+                                       command=lambda: self.controller.show_frame("RecordPage"), padx=internal_padx, pady=internal_pady)
         self.record_button.grid(row=1, column=1, padx=external_padx, pady=external_pady)
 
         # Adjust Position Button
         self.adjust_button = tk.Button(self, text="Adjust Position",
-                                       command=lambda: self.controller.show_frame("AdjustPage"),
-                                       padx=internal_padx, pady=internal_pady)
+                                       command=lambda: self.controller.show_frame("AdjustPage"), padx=internal_padx, pady=internal_pady)
         self.adjust_button.grid(row=1, column=0, padx=external_padx, pady=external_pady)
 
         # Configuration Button
-        self.config_button = tk.Button(self, text="Configuration", command=self.controller.configuration,
-                                       padx=internal_padx, pady=internal_pady)
+        self.config_button = tk.Button(self, text="Configuration", command=self.controller.configuration, padx=internal_padx, pady=internal_pady)
         self.config_button.grid(row=0, column=1, padx=external_padx, pady=external_pady)
 
 
@@ -477,11 +471,6 @@ class AdjustPage(tk.Frame):
         self.create_widgets()
 
     def create_widgets(self):
-        external_padx = 10
-        external_pady = 10
-        internal_padx = 10
-        internal_pady = 5
-
         # Extract the first numbers from MainSub
         choices = [str(sublist[0]) for sublist in MainSub]+ ["new"]
         self.selected_main.set(choices[0])  # Default selection
@@ -489,32 +478,26 @@ class AdjustPage(tk.Frame):
 
         self.dropdown.grid(row=0, column=0, padx=external_padx, pady=external_pady)
 
-        add_button = tk.Button(self, text="Add", command=self.controller.add_box, padx=internal_padx,
-                               pady=internal_pady)
+        add_button = tk.Button(self, text="Add", command=self.controller.add_box, padx=internal_padx, pady=internal_pady)
         add_button.grid(row=0, column=1, padx=external_padx, pady=external_pady)
 
-        delete_button = tk.Button(self, text="Delete Sub", command=self.controller.delete_box, padx=internal_padx,
-                                  pady=internal_pady)
+        delete_button = tk.Button(self, text="Delete Sub", command=self.controller.delete_box, padx=internal_padx, pady=internal_pady)
         delete_button.grid(row=0, column=2, padx=external_padx, pady=external_pady)
 
-        delete_mainbutton = tk.Button(self, text="Delete Main", command=self.controller.delete_main_box, padx=internal_padx,
-                                  pady=internal_pady)
+        delete_mainbutton = tk.Button(self, text="Delete Main", command=self.controller.delete_main_box, padx=internal_padx, pady=internal_pady)
         delete_mainbutton.grid(row=0, column=3, padx=external_padx, pady=external_pady)
 
         # Back Button to return to the StartPage
-        back_button = tk.Button(self, text="Back", command=lambda: self.controller.show_frame("StartPage"),
-                                padx=internal_padx, pady=internal_pady)
+        back_button = tk.Button(self, text="Back", command=lambda: self.controller.show_frame("StartPage"), padx=internal_padx, pady=internal_pady)
         back_button.grid(row=1, column=0, padx=external_padx, pady=external_pady)
 
         # Save Button
-        start_button = tk.Button(self, text="Save", command=self.controller.save_adjustments, padx=internal_padx,
-                                 pady=internal_pady)
-        start_button.grid(row=1, column=1, padx=external_padx, pady=external_pady)
+        save_button = tk.Button(self, text="Save", command=self.controller.save_adjustments, padx=internal_padx, pady=internal_pady)
+        save_button.grid(row=1, column=1, padx=external_padx, pady=external_pady)
 
         # Reset Button
-        stop_button = tk.Button(self, text="Reset", command=self.controller.reset_adjustments, padx=internal_padx,
-                                pady=internal_pady)
-        stop_button.grid(row=1, column=2, padx=external_padx, pady=external_pady)
+        reset_button = tk.Button(self, text="Reset", command=self.controller.reset_adjustments, padx=internal_padx, pady=internal_pady)
+        reset_button.grid(row=1, column=2, padx=external_padx, pady=external_pady)
 
 
 class RecordPage(tk.Frame):
@@ -524,11 +507,6 @@ class RecordPage(tk.Frame):
         self.create_widgets()
 
     def create_widgets(self):
-        external_padx = 10
-        external_pady = 10
-        internal_padx = 10
-        internal_pady = 5
-
         # Start Recording Button
         start_button = tk.Button(self, text="Start Recording", command=self.controller.start_recording,
                                  padx=internal_padx, pady=internal_pady)
@@ -551,7 +529,6 @@ def update_gui():
     root.title("Control panel")
     app = Application(master=root)
     app.mainloop()
-
 
 gui_thread = threading.Thread(target=update_gui)
 gui_thread.start()
@@ -656,7 +633,6 @@ def mouse_events(event, x, y, flags, param):
 cv2.namedWindow('Monitor', cv2.WINDOW_NORMAL)
 cv2.setMouseCallback('Monitor', mouse_events)
 
-
 while ret:
     ret, frame = cap.read()
 
@@ -666,7 +642,6 @@ while ret:
     copy_frame = frame.copy()
     frame = cv2.resize(frame, (mask_width, mask_height))
     copy_frame = cv2.resize(copy_frame, (mask_width, mask_height))
-
 
     if frame_nmr % step == 0 and previous_frame is not None:
         for S in [sublist[0] for sublist in MainSub]:
@@ -784,15 +759,13 @@ while ret:
         cv2.putText(frame, "Adjust position enable", (frame.shape[1] - 230, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.6,
                     (255, 255, 255), 2, cv2.LINE_AA)
 
-    cv2.putText(frame, current_time, (frame.shape[1] - 200, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2,
-                cv2.LINE_AA)
+    cv2.putText(frame, current_time, (frame.shape[1] - 200, 70), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 255, 255), 2, cv2.LINE_AA)
 
     cv2.imshow('Monitor', frame)
 
     if app is not None and app.is_recording:
         if app.video_writer is not None:
             app.video_writer.write(copy_frame)
-
 
     if cv2.waitKey(25) & 0xFF == ord('q'):
         break
